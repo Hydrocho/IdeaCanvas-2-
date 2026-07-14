@@ -283,7 +283,9 @@ function subscribeRealtime() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, async (payload) => {
             const { eventType, new: newRecord, old: oldRecord } = payload;
             if (eventType === 'INSERT') {
-                if (belongsToCurrentBoard(newRecord)) currentNotes.unshift(newRecord);
+                if (belongsToCurrentBoard(newRecord) && !currentNotes.some(n => n.id === newRecord.id)) {
+                    currentNotes.unshift(newRecord);
+                }
             } else if (eventType === 'UPDATE') {
                 const idx = currentNotes.findIndex(n => n.id === newRecord.id);
                 if (belongsToCurrentBoard(newRecord)) {
@@ -1181,11 +1183,27 @@ async function handleNoteSubmit(e) {
             if (error) throw error;
         } else {
             // 신규 등록
-            const { error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('notes')
-                .insert([payload]);
+                .insert([payload])
+                .select();
 
             if (error) throw error;
+
+            // 로컬 상태 즉시 업데이트 (실시간 지연 방지)
+            if (data && data.length > 0) {
+                const newNote = data[0];
+                if (!currentNotes.some(n => n.id === newNote.id)) {
+                    currentNotes.unshift(newNote);
+                    
+                    // 새 메모 등록 시 검색 조건을 초기화해 주어 필터링으로 숨는 현상 방지
+                    if (elements.searchInput) {
+                        elements.searchInput.value = '';
+                    }
+                    
+                    renderNotes();
+                }
+            }
         }
 
         closeAllModals();
