@@ -510,6 +510,10 @@
             if (elements.searchInput) elements.searchInput.value = '';
             renderBoards();
             setStatus('보드가 생성되었습니다.');
+
+            if (created && created.id) {
+                window.open(`board.html?board_id=${encodeURIComponent(created.id)}`, '_blank');
+            }
         } catch (error) {
             console.error('Create board failed:', error);
             setStatus('보드 생성에 실패했습니다.');
