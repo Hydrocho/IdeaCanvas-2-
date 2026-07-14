@@ -137,6 +137,15 @@ function initSupabase() {
             // 데이터 로드 및 채널 구독
             loadAllData();
             subscribeRealtime();
+
+            // Supabase Auth 세션 및 상태 변화 리스너 등록
+            supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                refreshAuthState(session ? session.user : null);
+            });
+
+            supabaseClient.auth.onAuthStateChange((_event, session) => {
+                refreshAuthState(session ? session.user : null);
+            });
         } catch (e) {
             console.error("Supabase client init failed:", e);
             showDisconnectedUI();
@@ -2563,16 +2572,6 @@ function bindGeneralEvents() {
         updateAuthUI();
         renderBoardSettings();
         renderSectionsUI();
-    }
-
-    if (supabaseClient) {
-        supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            refreshAuthState(session ? session.user : null);
-        });
-
-        supabaseClient.auth.onAuthStateChange((_event, session) => {
-            refreshAuthState(session ? session.user : null);
-        });
     }
 
     const btnLogin = document.getElementById('btn-login');
