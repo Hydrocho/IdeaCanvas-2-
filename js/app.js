@@ -137,15 +137,6 @@ function initSupabase() {
             // 데이터 로드 및 채널 구독
             loadAllData();
             subscribeRealtime();
-
-            // Supabase Auth 세션 및 상태 변화 리스너 등록
-            supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                refreshAuthState(session ? session.user : null);
-            });
-
-            supabaseClient.auth.onAuthStateChange((_event, session) => {
-                refreshAuthState(session ? session.user : null);
-            });
         } catch (e) {
             console.error("Supabase client init failed:", e);
             showDisconnectedUI();
@@ -2574,6 +2565,16 @@ function bindGeneralEvents() {
         renderSectionsUI();
     }
 
+    if (supabaseClient) {
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            refreshAuthState(session ? session.user : null);
+        });
+
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            refreshAuthState(session ? session.user : null);
+        });
+    }
+
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) {
         btnLogin.addEventListener('click', async () => {
@@ -2866,16 +2867,24 @@ function initBoardTitleEditor() {
         if (!canCurrentUserManageBoard()) return;
         titleEl.classList.add('hidden');
         inputEl.classList.remove('hidden');
-        inputEl.focus();
-        inputEl.select();
+        // 더블클릭 시 즉시 blur 이벤트가 호출되는 현상 방지
+        setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 0);
     });
 
-    // 편집 완료 함수
+    // 편집 완료 함수 (중복 실행 방지 플래그 추가)
+    let isSaving = false;
     const saveTitle = async () => {
+        if (isSaving) return;
+        isSaving = true;
+
         if (!canCurrentUserManageBoard()) {
             renderBoardSettings();
             titleEl.classList.remove('hidden');
             inputEl.classList.add('hidden');
+            isSaving = false;
             return;
         }
         const newTitle = inputEl.value.trim() || boardSettingsUtils.DEFAULT_BOARD_SETTINGS.title;
@@ -2890,6 +2899,7 @@ function initBoardTitleEditor() {
         } finally {
             titleEl.classList.remove('hidden');
             inputEl.classList.add('hidden');
+            isSaving = false;
         }
     };
 
