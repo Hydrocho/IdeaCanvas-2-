@@ -370,11 +370,18 @@ function subscribeRealtime() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'board_settings' }, (payload) => {
             const record = payload.eventType === 'DELETE' ? payload.old : payload.new;
             if (record && record.board_id && record.board_id !== currentBoardId) return;
+            
+            // 실시간 업데이트 수신 시 기존 보드 제목 보존
+            const currentTitle = currentBoardSettings.title;
+
             if (payload.eventType === 'DELETE') {
                 currentBoardSettings = boardSettingsUtils.normalizeBoardSettings(null);
             } else {
                 currentBoardSettings = boardSettingsUtils.normalizeBoardSettings(payload.new);
             }
+
+            currentBoardSettings.title = currentTitle;
+
             renderBoardSettings();
             renderNotes();
         })
